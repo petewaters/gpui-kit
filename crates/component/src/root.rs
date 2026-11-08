@@ -730,9 +730,13 @@ impl gpui_base::RootPlugin for WindowState {
         surface: gpui::AnyElement,
         _root: &gpui_base::Root,
         _window: &mut Window,
-        _cx: &mut App,
+        cx: &mut App,
     ) -> impl IntoElement {
-        window_border().child(surface)
+        // Cranc patch: an application that draws its own window frame opts out of this one.
+        if cx.has_global::<OwnWindowFrame>() {
+            return surface;
+        }
+        window_border().child(surface).into_any_element()
     }
 }
 
@@ -748,6 +752,12 @@ impl Render for WindowState {
             .child(self.native_menu_overlay.clone())
     }
 }
+
+/// Cranc patch: set this global to draw the window's frame yourself (through a
+/// `gpui_base::RootPlugin` registered after `init`); gpui-kit's `window_border` is then
+/// not drawn round the root.
+pub struct OwnWindowFrame;
+impl gpui::Global for OwnWindowFrame {}
 
 const ROOT_MISSING: &str =
     "component window state is missing; call gpui_component::init before gpui_kit::open_window";
